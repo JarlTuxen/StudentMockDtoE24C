@@ -12,8 +12,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.doThrow;
 
 @SpringBootTest
 class StudentServiceTest {
@@ -35,8 +37,15 @@ class StudentServiceTest {
         //findAll på mockedRepository skal give en liste af students
         Mockito.when(mockedStudentRepository.findAll()).thenReturn(students);
 
-        //findById(1) på mockedRepository skal returnere student Anders
-        //findById(42 på mockedRepository skal returnere en tom optionalStudent
+        //findById giver studerende på id=1 og empty optional på id=42
+        Mockito.when(mockedStudentRepository.findById(1L)).thenReturn(Optional.of(s1));
+        Mockito.when(mockedStudentRepository.findById(42L)).thenReturn(Optional.empty());
+
+        // Define the behavior af save using thenAnswer
+        // The student passed in save, can be read from arguments in the InvocationOnMock object
+
+        //deleteById(42L) giver fejl vha. doThrow
+        doThrow(new RuntimeException("Student not found with id: 42")).when(mockedStudentRepository).deleteById(42L);
 
         //inject mockedRepository in studentService
         studentService = new StudentService(mockedStudentRepository);
@@ -57,6 +66,11 @@ class StudentServiceTest {
 
     @Test
     void getStudentById() {
+
+        Student student = studentService.getStudentById(1L);
+        assertEquals("Anders", student.getName());
+
+        assertThrows(RuntimeException.class, () -> studentService.getStudentById(42L));
     }
 
     @Test
@@ -69,5 +83,6 @@ class StudentServiceTest {
 
     @Test
     void deleteStudent() {
+        assertThrows(RuntimeException.class, () -> studentService.deleteStudent(42L));
     }
 }
