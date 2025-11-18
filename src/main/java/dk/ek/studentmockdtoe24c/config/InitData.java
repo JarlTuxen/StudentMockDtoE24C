@@ -34,5 +34,14 @@ public class InitData implements CommandLineRunner {
         studentRepository.save(new Student("Liam", "9012", LocalDate.of(2010, 12, 31), LocalTime.of(13, 35, 15)));
         studentRepository.save(new Student("Ava", "0123", LocalDate.of(2006, 9, 18), LocalTime.of(17, 25, 35)));
 
+        //eksempel på brug af builder
+        Student builderStudent = new Student().builder()
+                .name("Mads")
+                .password("I'm a Java Guru")
+                .bornDate(LocalDate.of(2002, 6, 7))
+                .bornTime(LocalTime.of(23,59,59))
+                .build();
+        studentRepository.save(builderStudent);
+
     }
 }
