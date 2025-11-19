@@ -30,6 +30,7 @@ class StudentControllerTest {
 
     @Test
     void getAllStudents() throws Exception {
+        //hent alle students
         mockMvc.perform(get("/api/students"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
@@ -37,7 +38,7 @@ class StudentControllerTest {
 
     @Test
     void getStudentById() throws Exception {
-
+        //opret først ny student og hent derefter ById
         //lav testobjekt
         Student student = new Student(
                 "John",
@@ -71,14 +72,96 @@ class StudentControllerTest {
     }
 
     @Test
-    void createStudent() {
+    void shouldReturnNotFoundForNonExistentStudent() throws Exception {
+        mockMvc.perform(get("/api/students/{id}", 999L))
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    void updateStudent() {
+    void createStudent() throws Exception {
+        // Given: A new student request
+        Student request = new Student(
+                "Jane Smith",
+                "securePass",
+                LocalDate.of(1995, 5, 20),
+                LocalTime.of(14, 45)
+        );
+        String jsonRequest = objectMapper.writeValueAsString(request);
+
+        // When: We send a POST request
+        mockMvc.perform(post("/api/students")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Jane Smith"))
+                .andExpect(jsonPath("$.bornDate").value("1995-05-20"))
+                .andExpect(jsonPath("$.bornTime").value("14:45:00"));
     }
 
     @Test
-    void deleteStudent() {
+    void updateStudent() throws Exception {
+        //create student, then update the student
+        // Given: A student exists in the database
+        Student createRequest = new Student(
+                "John Doe",
+                "password123",
+                LocalDate.of(2001, 3, 10),
+                LocalTime.of(9, 15)
+        );
+        String createJson = objectMapper.writeValueAsString(createRequest);
+
+        MvcResult createResult = mockMvc.perform(post("/api/students")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createJson))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long studentId = objectMapper.readValue(createResult.getResponse().getContentAsString(), Student.class).getId();
+
+        // When: We send an update request
+        Student updateRequest = new Student(
+                "John Updated",
+                "newPassword",
+                LocalDate.of(2001, 3, 10),
+                LocalTime.of(9, 30)
+        );
+        String updateJson = objectMapper.writeValueAsString(updateRequest);
+
+        mockMvc.perform(put("/api/students/{id}", studentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("John Updated"))
+                .andExpect(jsonPath("$.bornDate").value("2001-03-10"))
+                .andExpect(jsonPath("$.bornTime").value("09:30:00"));
+
+    }
+
+    @Test
+    void deleteStudent() throws Exception {
+        // Given: A student exists in the database
+        Student request = new Student(
+                "Jane Doe",
+                "password123",
+                LocalDate.of(1999, 8, 25),
+                LocalTime.of(16, 0)
+        );
+        String jsonRequest = objectMapper.writeValueAsString(request);
+
+        MvcResult result = mockMvc.perform(post("/api/students")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonRequest))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long studentId = objectMapper.readValue(result.getResponse().getContentAsString(), Student.class).getId();
+
+        // When: We delete the student
+        mockMvc.perform(delete("/api/students/{id}", studentId))
+                .andExpect(status().isNoContent());
+
+        // Then: The student should not be found
+        mockMvc.perform(get("/api/students/{id}", studentId))
+                .andExpect(status().isNotFound());
     }
 }

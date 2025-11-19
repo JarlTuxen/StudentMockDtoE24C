@@ -4,8 +4,11 @@ import dk.ek.studentmockdtoe24c.model.Student;
 import dk.ek.studentmockdtoe24c.repository.StudentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
@@ -41,8 +44,27 @@ class StudentServiceTest {
         Mockito.when(mockedStudentRepository.findById(1L)).thenReturn(Optional.of(s1));
         Mockito.when(mockedStudentRepository.findById(42L)).thenReturn(Optional.empty());
 
-        // Define the behavior af save using thenAnswer
+        // Define the behavior af save using thenAnswer that uses parameters to the mock in the answer
         // The student passed in save, can be read from arguments in the InvocationOnMock object
+        Mockito.when(mockedStudentRepository.save(ArgumentMatchers.any(Student.class))).thenAnswer(new Answer<Student>() {
+            @Override
+            public Student answer(InvocationOnMock invocation) throws Throwable {
+                // Extract the student object passed as an argument to the save method
+                Object[] arguments = invocation.getArguments();
+                if (arguments.length > 0 && arguments[0] instanceof Student) {
+                    Student studentToSave = (Student) arguments[0];
+                    //er id = 0, så simuler create - er id sat så simuler opdater
+                    if (studentToSave.getId()==null) {
+                        //create - repository skal returnere studentobject med næste ledige id = 3
+                        studentToSave.setId(3L);
+                    }
+                    return studentToSave;
+                } else {
+                    // Handle the case where the argument is not a Student (optional)
+                    throw new IllegalArgumentException("Invalid argument type");
+                }
+            }
+        });
 
         //deleteById(42L) giver fejl vha. doThrow
         doThrow(new RuntimeException("Student not found with id: 42")).when(mockedStudentRepository).deleteById(42L);
@@ -75,10 +97,36 @@ class StudentServiceTest {
 
     @Test
     void createStudent() {
+        //Arrange & Act
+        Student resultStudent = studentService.createStudent(
+                new Student(
+                        "Hugo",
+                        "Secret",
+                        LocalDate.of(2000,1,1),
+                        LocalTime.of(0, 0, 1)
+                ));
+        //Assert
+        assertEquals("Hugo", resultStudent.getName());
+        assertEquals(3L, resultStudent.getId());
+
     }
 
     @Test
     void updateStudent() {
+        //Arrange
+        Student studentRequest = new Student(
+                "Hugo",
+                "Secret",
+                LocalDate.of(2000,1,1),
+                LocalTime.of(0, 0, 1));
+        //Act
+        Student resultStudent = studentService.updateStudent(1L,  studentRequest);
+        //Assert
+        assertEquals(1, resultStudent.getId());
+        assertEquals("Hugo", resultStudent.getName());
+        //Act & Assert for non-existing student
+        assertThrows(RuntimeException.class, () -> studentService.updateStudent(42L, studentRequest));
+
     }
 
     @Test
